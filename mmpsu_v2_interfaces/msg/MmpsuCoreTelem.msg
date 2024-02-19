@@ -1,0 +1,12 @@
+bool        output_enabled
+float32     vout_measured
+float32     iout_measured
+float32     vout_setpoint
+bool[6]     phase_present
+bool[6]     phase_enabled
+float32[6]  phase_duty_cycle
+float32[6]  phase_current
+float32[6]  phase_current_limit
+float32[6]  phase_temp
+bool[6]     phase_overtemp
+string      alarms
