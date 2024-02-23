@@ -2,6 +2,8 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.exceptions import *
+from rcl_interfaces.msg import ParameterDescriptor
+from rcl_interfaces.msg import ParameterType
 from mmpsu_v2 import mmpsu_v2_uart
 from mmpsu_v2 import mmpsu_base
 from threading import Lock
@@ -80,15 +82,29 @@ class MmpsuV2Node(Node):
         self.vout_set_srv = self.create_service(SetFloat32, 'mmpsu/set_vout', self.set_output_voltage_callback)
         self.iout_limit_srv = self.create_service(SetFloat32, 'mmpsu/set_iout_limit', self.set_iout_limit_callack)
 
+        # parameter things
+        core_telem_param_desc = ParameterDescriptor(type=ParameterType.PARAMETER_DOUBLE, description="Period for polling the core telemetry fields.")
+        uart_path_param_desc = ParameterDescriptor(type=ParameterType.PARAMETER_STRING, description="UART device path.")
+        aux_telem_param_desc = ParameterDescriptor(type=ParameterType.PARAMETER_DOUBLE, description="Period for polling the auxilliary telemetry fields.")
+
+        self.declare_parameter('core_telem_period', None, core_telem_param_desc)
+        self.declare_parameter('uart_path', None, uart_path_param_desc)
+        self.declare_parameter('aux_telem_period', None, aux_telem_param_desc)
+
         try:
-            self.core_status_period = self.get_parameter('mmpsu/core_telem_period').get_parameter_value().double_value
+            self.core_status_period = self.get_parameter('core_telem_period').get_parameter_value().double_value
         except ParameterNotDeclaredException:
             self.core_status_period = 0.1
         
         try:
-            self.uart_path = self.get_parameter('mmpsu/uart_path').get_parameter_value().string_value
+            self.uart_path = self.get_parameter('uart_path').get_parameter_value().string_value
         except ParameterNotDeclaredException:
-            self.uart_path = "/dev/ttyUSB0"
+            self.uart_path = "/dev/ttyS0"
+        
+        try:
+            self.aux_telem_period = self.get_parameter('aux_telem_period').get_parameter_value().double_value
+        except ParameterNotDeclaredException:
+            self.aux_telem_period = 0.5
 
         self._mmpsu = mmpsu_v2_uart.MmpsuV2Uart(self.uart_path, self.get_logger())
 
@@ -97,9 +113,9 @@ class MmpsuV2Node(Node):
         else:
             self.get_logger().warning("MMPSU test comms failed.")
 
-        # timer
+        # timers
         self.core_timer = self.create_timer(self.core_status_period, self.status_timer_callback)
-        self.aux_timer = self.create_timer(self.core_status_period, self.aux_telem_timer_callback)
+        self.aux_timer = self.create_timer(self.aux_telem_period, self.aux_telem_timer_callback)
 
 
     def status_timer_callback(self):

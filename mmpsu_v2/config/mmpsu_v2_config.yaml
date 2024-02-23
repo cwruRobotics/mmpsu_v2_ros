@@ -1,0 +1,5 @@
+/mmpsu/**:
+  ros__parameters:
+    core_telem_period: 0.1
+    aux_telem_period: 0.5
+    uart_path: "/dev/ttyS0"

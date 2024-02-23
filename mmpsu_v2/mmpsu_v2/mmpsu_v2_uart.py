@@ -3,7 +3,6 @@
 from mmpsu_v2.mmpsu_base import *
 import serial
 from typing import Dict, List
-import crc
 from threading import Lock
 import rclpy
 from rclpy.impl.rcutils_logger import RcutilsLogger
@@ -16,16 +15,6 @@ class MmpsuV2Uart(MmpsuV2Base):
     MIN_VOUT = 0.0
     MAX_PHASE_CURR_LIMIT = 32.0
     MIN_PHASE_CURR_LIMIT = 0.0
-
-    # CAN bus 16-bit CRC
-    CRC_CONFIG = crc.Configuration(
-        width=16,
-        polynomial=0x1021,
-        init_value=0x0000,
-        final_xor_value=0x0000,
-        reverse_input=False,
-        reverse_output=False,
-    )
     
     def __init__(self, comport: str, logger: RcutilsLogger):
         super().__init__(MMPSU_V2_REGS)
@@ -39,7 +28,6 @@ class MmpsuV2Uart(MmpsuV2Base):
         if not self._ser.is_open:
             self._ser.open()
         
-        self._crc_calc = crc.Calculator(self.CRC_CONFIG, optimized=True)
         self._uart_lock = Lock()
     
     def test_comms(self) -> bool:
@@ -58,7 +46,7 @@ class MmpsuV2Uart(MmpsuV2Base):
         s = ""
         for b in packet:
             s += f"{b:02X} "
-        self.logger.warn(s)
+        
         with self._uart_lock:
             if not self._send_packet(packet):
                 return False
@@ -67,7 +55,7 @@ class MmpsuV2Uart(MmpsuV2Base):
             s = ""
             for b in rpy:
                 s += f"{b:02X} "
-            self.logger.warn(s)
+            
 
             if not self._verify_packet(packet, rpy):
                 return False
@@ -219,7 +207,7 @@ class MmpsuV2Uart(MmpsuV2Base):
     def _compute_crc(self, payload: bytearray):
         """Compute CRC over the entire payload array. payload argument should 
         be only the payload and nothing else"""
-        return 0 # self._crc_calc.checksum(payload)
+        return 0
 
     def _add_crc(self, packet: bytearray | bytes):
         """Stuff the packet's CRC bits with the computed CRC."""
