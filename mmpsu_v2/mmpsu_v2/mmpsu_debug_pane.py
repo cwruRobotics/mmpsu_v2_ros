@@ -17,6 +17,10 @@ class MmpsuDebugPane(Node):
         
         self.w = tk.Tk()
         self.w.title = "MMPSU v2 Control & Debug"
+        self.futures = {
+            "set_vout": None,
+            "set_output_enabled": None
+        }
 
         # create the gui
         self.setup_widgets()
@@ -37,6 +41,13 @@ class MmpsuDebugPane(Node):
         while not self.set_output_enab_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("MMPSU set_output_enabled service not available. Waiting again...")
 
+        self.set_manual_mode_cli = self.create_client(SetBool, 'mmpsu/set_manual_mode')
+        while not self.set_manual_mode_cli.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info("MMPSU set_manual_mode service not available. Waiting again...")
+
+        self.set_phase_count_cli = self.create_client(SetFloat32, 'mmpsu/set_phase_count')
+        while not self.set_phase_count_cli.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info("MMPSU set_phase_count service not available. Waiting again...")
 
 
     def setup_widgets(self):
@@ -69,6 +80,17 @@ class MmpsuDebugPane(Node):
         tk.Button(self.ctrl_frame, text="SET", command=self.set_iout_limit).grid(row=grid_row, column=2)
         grid_row += 1
         
+        # MANUAL MODE
+        self.manual_mode_intvar = tk.IntVar()
+        self.manual_mode_chkbtn = tk.Checkbutton(self.ctrl_frame, text="Manual Mode", variable=self.manual_mode_intvar, onvalue=1, offval=0, command=self.set_manual_mode)
+        self.manual_mode_chkbtn.grid(row=grid_row, column=0)
+        grid_row += 1
+
+        self.phase_count_strvar = tk.StringVar()
+        tk.Label(self.ctrl_frame, text="PHASE COUNT:").grid(row=grid_row, column=0)
+        tk.Entry(self.ctrl_frame, textvariable=self.phase_count_strvar).grid(row=grid_row, column=1)
+        tk.Button(self.ctrl_frame, text="SET", command=self.set_phase_count).grid(row=grid_row, column=2)
+
         # === DATA FRAME ===
         grid_row = 0
         # VOUT MEASURED
@@ -207,20 +229,36 @@ class MmpsuDebugPane(Node):
         try:
             req = SetFloat32.Request()
             req.setpoint = float(self.vout_setpt_strvar.get())
-            self.vout_future = self.set_vout_cli.call_async(req)
-            # rclpy.spin_until_future_complete(self, self.vout_future, timeout_sec=1.0)
-            # if not self.vout_future.result().success:
-            #     self.get_logger().warn("set_vout_setpt was unsuccessful.")
+            self.futures['vout_setpt'] = self.set_vout_cli.call_async(req)
 
         except ValueError:
             self.get_logger().warn("set_vout_setpt was unsuccessful.")
 
+    def set_manual_mode(self):
+        try:
+            req = SetBool.Request()
+            req.data = bool(self.manual_mode_intvar.get())
+            self.futures['manual_mode'] = self.set_manual_mode_cli.call_async(req)
+
+        except ValueError:
+            self.get_logger().warn("set_manual_mode was unsuccessful.")
+
     def set_iout_limit(self):
         pass
+
+    def set_phase_count(self):
+        try:
+            req = SetFloat32.Request()
+            req.setpoint = float(self.phase_count_strvar.get())
+            self.futures['phase_count'] = self.set_phase_count_cli.call_async(req)
+
+        except ValueError:
+            self.get_logger().warn("set_phase_count was unsuccessful.")
 
     def gui_update_callback(self):
         self.w.update_idletasks()
         self.w.update()
+                
 
 
 def main(args=None):

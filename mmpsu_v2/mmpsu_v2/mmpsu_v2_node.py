@@ -74,13 +74,15 @@ class MmpsuV2Node(Node):
     def __init__(self):
         super().__init__('mmpsu_v2')
         # publishers
-        self.core_telem_pub = self.create_publisher(MmpsuCoreTelem, 'mmpsu/mmpsu_core', 10)
-        self.aux_telem_pub = self.create_publisher(MmpsuAuxTelem, 'mmpsu/mmpsu_aux', 10)
+        self.core_telem_pub = self.create_publisher(MmpsuCoreTelem, 'mmpsu_core', 10)
+        self.aux_telem_pub = self.create_publisher(MmpsuAuxTelem, 'mmpsu_aux', 10)
 
         # services
-        self.output_enable = self.create_service(SetBool, 'mmpsu/set_output_enabled', self.set_output_enabled_callback)
-        self.vout_set_srv = self.create_service(SetFloat32, 'mmpsu/set_vout', self.set_output_voltage_callback)
-        self.iout_limit_srv = self.create_service(SetFloat32, 'mmpsu/set_iout_limit', self.set_iout_limit_callack)
+        self.output_enable = self.create_service(SetBool, 'set_output_enabled', self.set_output_enabled_callback)
+        self.vout_set_srv = self.create_service(SetFloat32, 'set_vout', self.set_output_voltage_callback)
+        self.iout_limit_srv = self.create_service(SetFloat32, 'set_iout_limit', self.set_iout_limit_callack)
+        self.manual_mode_srv = self.create_service(SetBool, 'set_manual_mode', self.set_manual_mode_callback)
+        self.phase_count_srv = self.create_service(SetFloat32, 'set_phase_count', self.set_phase_count_callback)
 
         # parameter things
         core_telem_param_desc = ParameterDescriptor(type=ParameterType.PARAMETER_DOUBLE, description="Period for polling the core telemetry fields.")
@@ -116,7 +118,6 @@ class MmpsuV2Node(Node):
         # timers
         self.core_timer = self.create_timer(self.core_status_period, self.status_timer_callback)
         self.aux_timer = self.create_timer(self.aux_telem_period, self.aux_telem_timer_callback)
-
 
     def status_timer_callback(self):
         msg = MmpsuCoreTelem()
@@ -200,6 +201,16 @@ class MmpsuV2Node(Node):
 
         return resp
 
+    def set_manual_mode_callback(self, req, resp):
+        """Callback for the set_manual_mode_srv service."""
+        resp.success = self._mmpsu.write_field('MANUAL_MODE', req.data)
+        return resp
+
+    def set_phase_count_callback(self, req, resp):
+        """Callback for the set_phase_count_srv service."""
+        count = self._clamp(int(req.setpoint), 1, 6)
+        resp.success = self._mmpsu.write_field('PHASE_COUNT_REQUESTED', count)
+        return resp
 
     def _clamp(self, value, min_val, max_val):
         if value >= min_val:
