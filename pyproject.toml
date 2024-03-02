@@ -1,0 +1,31 @@
+[project]
+name = "mmpsu_v2_ros"
+
+version = "1.0.0"
+
+dependencies = [
+    'setuptools',
+    'flake8==7.0.0',
+    'mypy >= 1.7',
+    'pyserial'
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311']
+
+[tool.mypy]
+strict = true
+# Done becuase tons of python packages are missing stubs or py.typed markers
+ignore_missing_imports = true
+# Done because some calls insides rclpy are not typed
+disallow_untyped_calls = false
+# Done because rclpy Node has type Any
+disallow_subclassing_any = false
+
+[tool.flake8]
+extend-ignore = ['B902','C816','D100','D101','D102','D103','D104','D105','D106','D107','D203','D212','D404','I202', 'E203']
+import-order-style = 'google'
+max-line-length = 100
+show-source = true
+statistics = true
